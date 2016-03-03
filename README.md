@@ -1,7 +1,6 @@
-# myplot
-Customized plots useful in climate research
+# myplot: Customized plots useful in climate research
 
 ![geoplot_example](examples/geoplot_example.png)
 
-# Examples
-[notebook](examples/geoplot_examples.ipynb)
+## Examples
+[`myplot.geoplots.geoplot`](examples/geoplot_examples.ipynb)
