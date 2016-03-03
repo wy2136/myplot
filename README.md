@@ -1,4 +1,4 @@
-# myplot: Customized plots useful in climate research
+# myplot: make figures in climate research
 
 ![geoplot_example](examples/geoplot_example.png)
 
