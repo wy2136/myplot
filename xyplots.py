@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import os
 
-# 
+#
 # load 2-d test data
 def load_test_data(Nx=180, Ny=90, Nmode_x=2, Nmode_y=1):
     x = np.linspace(0, 360, Nx+1)[:-1]
@@ -19,7 +19,7 @@ def load_test_data(Nx=180, Ny=90, Nmode_x=2, Nmode_y=1):
     y = y[np.newaxis,:] # reshape(1, Ny)
     data = np.cos(y/180.0 * np.pi * Nmode_y).T * np.sin(x/360.0 * 2 * np.pi * Nmode_x)
     return data, np.squeeze(x), np.squeeze(y)
-# 
+#
 def _get_grid_edges(x,y):
     '''Get grid edges from grid centers.'''
     if len(x)==2:
@@ -113,7 +113,7 @@ def figcolorbar(mappable=None, **kw):
         # plt.subplots_adjust(bottom=bottom)
     pos = [center[0]-width/2.0, center[1]-height/2.0, width, height]
     cax = plt.gcf().add_axes(pos)
-    cbar = plt.colorbar(mappable=mappable, 
+    cbar = plt.colorbar(mappable=mappable,
         cax=cax, extend=extend, orientation=orientation, **kw)
     # units
     if units is not None:
@@ -123,7 +123,7 @@ def figcolorbar(mappable=None, **kw):
         else:
             cbar.ax.yaxis.set_label_position('right')
             cbar.ax.set_ylabel(units, rotation=0, ha='left', va='center')
-    
+
 def text(*args, **kw):
     transform = kw.pop('transform', plt.gca().transAxes)
     plt.text(*args, transform=transform, **kw)
@@ -166,7 +166,7 @@ def yticks2lat(new_yticks=None):
         else:
             new_yticklabels[i] = str(int(y)) + '$^{\circ}$'
     plt.gca().set_yticklabels(new_yticklabels)
-# 
+#
 # ######## plot basemap
 def mapplot(lon=None, lat=None, **kw):
     '''Plot the basemap using coast data from Matlab.'''
@@ -176,12 +176,12 @@ def mapplot(lon=None, lat=None, **kw):
         lat = np.arange(-89, 90, 2)
     lon = np.squeeze(lon)
     lat = np.squeeze(lat)
-    
+
     # get grid edges
     lon_edge, lat_edge = _get_grid_edges(lon, lat)
     lat_edge[lat_edge < -90] = -90
     lat_edge[lat_edge >  90] = 90
-    
+
     # plot lonlatbox
     lonlatbox = kw.pop('lonlatbox', None)
     if lonlatbox is not None:
@@ -190,18 +190,18 @@ def mapplot(lon=None, lat=None, **kw):
             np.linspace(lon0, lon1, 100),
             lon1*np.ones(100),
             np.linspace(lon1, lon0, 100),
-            lon0*np.ones(100) 
+            lon0*np.ones(100)
             ]).ravel()
         lat_ = np.array([
             lat0*np.ones(100),
             np.linspace(lat0, lat1, 100),
             lat1*np.ones(100),
-            np.linspace(lat1, lat0, 100) 
+            np.linspace(lat1, lat0, 100)
             ]).ravel()
         lonlatbox_color = kw.pop('lonlatbox_color', 'k')
         lonlatbox_kw = kw.pop('lonlatbox_kw', {})
         plt.plot(lon_, lat_, color=lonlatbox_color, **lonlatbox_kw)
-    
+
     # plot coast lines
     # load coast data
     lonlon, latlat = _load_coast()
@@ -231,28 +231,28 @@ def mapplot(lon=None, lat=None, **kw):
             -90, latlat[i4:i5+1], -90,
             latlat[i5+1:]))
         continents_color = kw.pop('continents_color', '0.5')
-        plt.fill(lonlon, latlat, 
+        plt.fill(lonlon, latlat,
             color=continents_color, edgecolor='none',
             **kw)
     else:
         # plot coastlines
         coastlines_color = kw.pop('coastlines_color', '0.66')
-        plt.plot(lonlon, latlat, 
+        plt.plot(lonlon, latlat,
             color=coastlines_color, linewidth=1,
             **kw)
-    
+
     xticks2lon(xticks)
     yticks2lat(yticks)
     plt.xlim(min(lon_edge), max(lon_edge))
     plt.ylim(min(lat_edge), max(lat_edge))
     return
-# 
+#
 # ######## plot data on basemap
 def xyplot(data, x=None, y=None, **kw):
     '''Show 2D data in a x-y plane, which can also be a lon-lat plane.
         '''
     # data prepare
-    input_data_have_two_components = ( isinstance(data, tuple) 
+    input_data_have_two_components = ( isinstance(data, tuple)
         or isinstance(data, list) )
     if input_data_have_two_components:
         # input data is (u,v) or [u, v] where u, v are ndarray and two components of a vector
@@ -266,7 +266,7 @@ def xyplot(data, x=None, y=None, **kw):
         data = data.squeeze()
         assert data.ndim == 2, 'Input data must be two dimensional!'
     Ny, Nx = data.shape
-    
+
     # x, y and basemap
     add_basemap = kw.pop('add_basemap', False)
     if add_basemap:
@@ -280,7 +280,7 @@ def xyplot(data, x=None, y=None, **kw):
         fill_continents = basemap_kw.pop('fill_continents', fill_continents)
         lonlatbox = kw.pop('lonlatbox', None)
         lolatbox = basemap_kw.pop('lonlatbox', lonlatbox)
-        mapplot(x, y, fill_continents=fill_continents, 
+        mapplot(x, y, fill_continents=fill_continents,
             lonlatbox=lonlatbox, **basemap_kw)
     else:
         if x is None:
@@ -293,8 +293,8 @@ def xyplot(data, x=None, y=None, **kw):
         y_edge[y_edge < -90] = -90
         y_edge[y_edge >  90] =  90
 
-    
-    
+
+
     #
     # ###### plot parameters
     # plot_type
@@ -305,14 +305,14 @@ def xyplot(data, x=None, y=None, **kw):
         else:
             plot_type = 'pcolormesh'
             print('plot_type **** pcolormesh **** is used.')
-    
+
     # cmap
     cmap = kw.pop('cmap', None)
     if cmap is None:
          zz_max = data.max()
          zz_min = data.min()
          if zz_min >=0:
-             try: 
+             try:
                  cmap = plt.get_cmap('viridis')
              except:
                  cmap = plt.get_cmap('OrRd')
@@ -323,7 +323,7 @@ def xyplot(data, x=None, y=None, **kw):
                  cmap = plt.get_cmap('Blues_r')
          else:
              cmap = plt.get_cmap('RdBu_r')
-    
+
     # units
     units = kw.pop('units', '')
     # clim
@@ -334,7 +334,7 @@ def xyplot(data, x=None, y=None, **kw):
         cbar_kw = kw.pop('cbar_kw', {})
         cbar_extend = kw.pop('cbar_extend', 'neither')
         cbar_extend = cbar_kw.pop('extend', cbar_extend)
-        
+
         if cbar_type in ('v', 'vertical'):
             cbar_size = kw.pop('cbar_size', '2.5%')
             cbar_size = cbar_kw.pop('size', cbar_size)
@@ -351,7 +351,7 @@ def xyplot(data, x=None, y=None, **kw):
             cbar_position = 'bottom'
             cbar_orientation = 'horizontal'
         hide_cbar = kw.pop('hide_cbar', False)
-    
+
     # xticks and yticks
     if add_basemap:
         xticks = kw.pop('xticks', np.arange(0, 360, 60))
@@ -360,7 +360,7 @@ def xyplot(data, x=None, y=None, **kw):
     # ###### start plot
     # pcolor
     if plot_type in ('pcolor',):
-        plot_obj = plt.pcolor(x_edge, y_edge, data, cmap=cmap, **kw) 
+        plot_obj = plt.pcolor(x_edge, y_edge, data, cmap=cmap, **kw)
     # pcolormesh
     elif plot_type in ('pcolormesh',):
         plot_obj = plt.pcolormesh(x_edge, y_edge, data, cmap=cmap, **kw)
@@ -416,20 +416,24 @@ def xyplot(data, x=None, y=None, **kw):
             qkey_labelpos = kw.pop('qkey_labelpos', 'W')
             labelpos = qkey_kw.pop('labelpos', qkey_labelpos)
         # quiverplot
-        plot_obj = plt.quiver(x_, y_, u_, v_, color=quiver_color, 
+        plot_obj = plt.quiver(x_, y_, u_, v_, color=quiver_color,
             scale=quiver_scale, **kw)
         if not hide_qkey:
             # quiverkey plot
-            plt.quiverkey(plot_obj, qkey_X, qkey_Y, qkey_U, 
+            plt.quiverkey(plot_obj, qkey_X, qkey_Y, qkey_U,
                 label=qkey_label, labelpos=qkey_labelpos, **qkey_kw)
     # scatter
     elif plot_type in ('scatter',):
         L = data.astype('bool')
         marker_color = kw.pop('marker_color', 'k')
         plot_obj = plt.scatter(X[L], Y[L], color=marker_color, **kw)
+    # hatch plot
+    elif plot_type in ('hatch', 'hatches'):
+        plot_obj = plt.contourf(x, y, data, colors='none', hatches=['///'],
+            extend='both', **kw)
     else:
         print('Please choose a right plot_type from ("pcolor", "contourf", "contour")!')
-    
+
     # clim
     if plot_type in ('pcolor', 'pcolormesh', 'imshow'):
         if clim is None:
@@ -448,20 +452,20 @@ def xyplot(data, x=None, y=None, **kw):
         else:
             pass
         plt.clim(clim)
-    
+
     # colorbar
     if plot_type in ('pcolor', 'pcolormesh', 'contourf', 'imshow', 'contourf+'):
-        colorbar(mappable=plot_obj, cbar_type=cbar_type, size=cbar_size, 
+        colorbar(mappable=plot_obj, cbar_type=cbar_type, size=cbar_size,
             pad=cbar_pad, extend=cbar_extend, units=units, **cbar_kw)
         # remove the colorbar to avoid repeated colorbars
         if hide_cbar:
-            cbar.remove() 
-    
+            cbar.remove()
+
     # xticks and yticks
     if add_basemap:
         xticks2lon(xticks)
         yticks2lat(yticks)
-        
+
     # xlim and ylim
     # if plot_type in ('pcolormesh', 'pcolor', 'imshow'):
     #     plt.xlim(min(x_edge), max(x_edge))
@@ -471,6 +475,5 @@ def xyplot(data, x=None, y=None, **kw):
     #     plt.ylim(min(y), max(y))
     plt.xlim(min(x_edge), max(x_edge))
     plt.ylim(min(y_edge), max(y_edge))
-    
+
     return plot_obj
-    
