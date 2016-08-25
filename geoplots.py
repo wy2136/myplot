@@ -15,7 +15,7 @@ from mpl_toolkits.basemap import addcyclic, shiftgrid
 def geoplot(data=None, lon=None, lat=None, **kw):
     '''Show 2D data in a lon-lat plane.
 
-    **** Input ****:
+    ###### Input
         data: array of shape (n_lat, n_lon), or [u_array, v_array]-like for (u,v)
             data or None(default) when only plotting the basemap.
         lon: n_lon length vector or None(default).
@@ -24,26 +24,38 @@ def geoplot(data=None, lon=None, lat=None, **kw):
 
     --------
     Basemap related parameters:
+        basemap_kw: dict parameter in the initialization of a Basemap.
         proj or projection: map projection name ('cyl' default).
         lon_0: map center longitude (None as default).
         lat_0: map center latitude (None as default).
+        lonlatcorner: (llcrnrlon, urcrnrlon, llcrnrlat, urcrnrlat).
         boundinglat: latitude at the map out boundary (None as default).
-        basemap_kw: dict parameter in the initialization of a Basemap.
+        basemap_round or round: True(default) or False.
 
         fill_continents: bool value (False as default).
-        continents_color: color of continents ('0.66' as default).
         continents_kw: dict parameter used in the Basemap.fillcontinents method.
-        coastlines_color: color of coast lines ('0.66' as default).
+        continents_color: color of continents ('0.5' as default).
+        lake_color: color of lakes ('0.5' as default).
+
         coastlines_kw: dict parameter used in the Basemap.drawcoastlines method.
-        parallels: parallels to be drawn (np.arange(-60, 61, 30) as default).
-        parallels_color: color of parallels ('0.66' as default).
+        coastlines_color: color of coast lines ('0.66' as default).
+
         parallels_kw: dict parameters used in the Basemap.drawparallels method.
-        meridians: meridians to be drawn (np.arange(-180, 360, 60) as default).
-        meridians_color: color of meridians ('0.66' as default).
+        parallels: parallels to be drawn (None as default).
+        parallels_color: color of parallels ('0.75' as default).
+        parallels_labels:[0,0,0,0] or [1,0,0,0].
+
         meridians_kw: dict parameters used in the Basemap.drawmeridians method.
+        meridians: meridians to be drawn (None as default).
+        meridians_color: color of meridians ('0.75' as default).
+        meridians_labels: [0,0,0,0] or [0,0,0,1].
+
+        lonlatbox: None or (lon_start, lon_end, lat_start, lat_end).
+        lonlatbox_kw: dict parameters in the plot of lon-lat box.
+        lonlatbox_color:
 
     --------
-    Plot related parameters:
+    General plot parameters:
         plot_type: a string of plot type from ('pcolor', 'pcolormesh', 'imshow', 'contourf', 'contour', 'quiver', 'scatter') or None(default).
         cmap: pyplot colormap.
         clim: a tuple of colormap limit.
@@ -52,19 +64,48 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         units: data units to be shown in the colorbar.
         plot_kw: dict parameters used in the plot functions.
 
-    --------
+    ------
+    Imshow related parameters
+        origin: 'lower' or 'upper'.
+        extent: horizontal range.
+        interpolation: 'nearest' (default) or 'bilinear' or 'cubic'.
+
+    ------
+    Contourf related parameters:
+        extend: 'both'(default).
+        levels: contour levels.
+
+    ------
+    Contour related parameters:
+        label_contour: False(default) or True.
+            Whether to label contours or not.
+        levels: contour levels
+        colors: contour color (default is 'gray').
+
+    ------
     Quiver plot related parameters:
-        scale: quiver scale.
+        stride: stride along lon and lat.
+        stride_lon: stride along lon.
+        stride_lat: stride along lat.
+        quiver_scale: quiver scale.
         quiver_color: quiver color.
         quiver_kw: dict parameters used in the plt.quiver function.
 
         hide_qkey: bool value, whether to show the quiverkey plot.
-        qkey_X: X parameter in the plt.quiverkey function.
-        qkey_Y: Y parameter in the plt.quiverkey function.
-        qkey_U: U parameter in the plt.quiverkey function.
+        qkey_X: X parameter in the plt.quiverkey function (default is 0.85).
+        qkey_Y: Y parameter in the plt.quiverkey function (default is 1.02).
+        qkey_U: U parameter in the plt.quiverkey function (default is 2).
         qkey_label: label parameter in the plt.quiverkey function.
         qkey_labelpos: labelpos parameter in the plt.quiverkey function.
         qkey_kw: dict parameters used in the plt.quiverkey function.
+
+    ------
+    Scatter related parameters:
+        scatter_data: None(default) or (lonvec, latvec).
+
+    -----
+    Hatch plot related parameters:
+        hatches: ['///'] is default.
 
     --------
     Colorbar related parameters:
@@ -78,13 +119,13 @@ def geoplot(data=None, lon=None, lat=None, **kw):
             0.4 for horizontal colorbar.
         cbar_kw: dict parameters used in the plt.colorbar function.
 
-    **** Returns ****
+    ###### Returns
         basemap object if only basemap is plotted.
         plot object if data is shown.
         '''
 
     #  copy the original data
-    if data is not None:
+    if data is not None and hasattr(data, 'copy'):
         data = data.copy()
     if lon is not None:
         lon = lon.copy()
@@ -249,16 +290,29 @@ def geoplot(data=None, lon=None, lat=None, **kw):
             lonlatbox[3]*np.ones(100),
             np.linspace(lonlatbox[3], lonlatbox[2], 100)
             ]).ravel()
-        lonlatbox_color = kw.pop('lonlatbox_color', 'k')
         lonlatbox_kw = kw.pop('lonlatbox_kw', {})
+        lonlatbox_color = kw.pop('lonlatbox_color', 'k')
+        lonlatbox_color = lonlatbox_kw.pop('color', lonlatbox_color)
         m.plot(lonlon, latlat, latlon=True, color=lonlatbox_color, **lonlatbox_kw)
+
+
+    # scatter
+    scatter_data = kw.pop('scatter_data', None)
+    if scatter_data is not None:
+        # L = data.astype('bool')
+        # marker_color = kw.pop('marker_color', 'k')
+        # plot_obj = m.scatter(X[L], Y[L], color=marker_color, **kw)
+        lonvec, latvec = scatter_data
+        plot_obj = m.scatter(lonvec, latvec, **kw)
+
 
     # #### stop here and return the map object if data is None
     if data is None:
         return m
 
     # data prepare
-    input_data_have_two_components = isinstance(data, tuple) or isinstance(data, list)
+    input_data_have_two_components = isinstance(data, tuple) \
+        or isinstance(data, list)
     if input_data_have_two_components:
         # input data is (u,v) or [u, v] where u, v are ndarray and two components of a vector
         assert len(data) == 2,'quiver data must contain only two componets u and v'
@@ -396,9 +450,11 @@ def geoplot(data=None, lon=None, lat=None, **kw):
     # pcolor
     if plot_type in ('pcolor',):
         plot_obj = m.pcolor(X_edge, Y_edge, data, cmap=cmap, **kw)
+
     # pcolormesh
     elif plot_type in ('pcolormesh',):
         plot_obj = m.pcolormesh(X_edge, Y_edge, data, cmap=cmap, **kw)
+
     # imshow
     elif plot_type in ('imshow',):
         if Y_edge[-1,0] > Y_edge[0,0]:
@@ -409,6 +465,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         interpolation = kw.pop('interpolation', 'nearest')
         plot_obj = m.imshow(data, origin=origin, cmap=cmap, extent=extent,
             interpolation=interpolation, **kw)
+
     # contourf
     elif plot_type in ('contourf',):
         if proj in ('ortho','npstere', 'nplaea', 'npaeqd', 'spstere', 'splaea', 'spaeqd'):
@@ -418,6 +475,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         extend = kw.pop('extend', 'both')
         # levels = kw.pop('levels', None)
         plot_obj = m.contourf(X, Y, data, extend=extend, cmap=cmap, **kw)
+
     # contour
     elif plot_type in ('contour',):
         if proj in ('ortho','npstere', 'nplaea', 'npaeqd', 'spstere', 'splaea', 'spaeqd'):
@@ -428,6 +486,11 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         if colors is not None:
             cmap = None
         plot_obj = m.contour(X, Y, data, cmap=cmap, colors=colors, **kw)
+        label_contour = kw.pop('label_contour', False)
+        if label_contour:
+            plt.clabel(plot_obj,plot_obj.levels[::2],fmt='%.2G')
+
+    # contourf + contour
     elif plot_type in ('contourf+',):
         if proj in ('ortho','npstere', 'nplaea', 'npaeqd', 'spstere', 'splaea', 'spaeqd'):
             data, lon = addcyclic(data, lon)
@@ -439,6 +502,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         if colors is not None:
             cmap = None
         m.contour(X, Y, data, cmap=cmap, colors=colors, **kw)
+
     # quiverplot
     elif plot_type in ('quiver',):
         stride = kw.pop('stride', 1)
@@ -465,18 +529,14 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         qkey_label = kw.pop('qkey_label', '{:g} '.format(qkey_U) + units)
         qkey_label = qkey_kw.pop('label', qkey_label)
         qkey_labelpos = kw.pop('qkey_labelpos', 'W')
-        labelpos = qkey_kw.pop('labelpos', qkey_labelpos)
+        qkey_labelpos = qkey_kw.pop('labelpos', qkey_labelpos)
         plot_obj = m.quiver(X_, Y_, u_rot, v_rot, color=quiver_color,
             scale=quiver_scale, **kw)
         if not hide_qkey:
             # quiverkey plot
             plt.quiverkey(plot_obj, qkey_X, qkey_Y, qkey_U,
                 label=qkey_label, labelpos=qkey_labelpos, **qkey_kw)
-    # scatter
-    elif plot_type in ('scatter',):
-        L = data.astype('bool')
-        marker_color = kw.pop('marker_color', 'k')
-        plot_obj = m.scatter(X[L], Y[L], color=marker_color, **kw)
+
     # hatch plot
     elif plot_type in ('hatch', 'hatches'):
         hatches = kw.pop('hatches', ['///'])

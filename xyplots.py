@@ -169,11 +169,35 @@ def yticks2lat(new_yticks=None):
 #
 # ######## plot basemap
 def mapplot(lon=None, lat=None, **kw):
-    '''Plot the basemap using coast data from Matlab.'''
+    '''Plot the basemap using coast data from Matlab.
+
+    #### Input
+        lon: vector-like longitude range.
+        lat: vector-like latitude range.
+        kw: optional parameters
+
+    ------
+    Optional parameters:
+        lonlatbox: [lon_start, lon_end, lat_start, lat_end] like array.
+        lonlatbox_color: lonlat box color.
+        lonlatbox_kw: dict parameters used in plotting lonlatbox.
+
+        fill_continents: boolean, default is False.
+        continents_color: color of continents, default is 0.5.
+        coastlines_color: color of coastlines, default is 0.66.
+        coastlines_width: line width of coastlines, default is 1.
+
+    '''
     if lon is None:
-        lon = np.arange(0,360,2)
+        if plt.get_fignums():# figures already exist
+            lon = plt.gca().get_xlim()
+        else:
+            lon = np.arange(0,360,2)
     if lat is None:
-        lat = np.arange(-89, 90, 2)
+        if plt.get_fignums(): # figures already exist
+            lat = plt.gca().get_ylim()
+        else:
+            lat = np.arange(-89, 90, 2)
     lon = np.squeeze(lon)
     lat = np.squeeze(lat)
 
@@ -198,8 +222,9 @@ def mapplot(lon=None, lat=None, **kw):
             lat1*np.ones(100),
             np.linspace(lat1, lat0, 100)
             ]).ravel()
-        lonlatbox_color = kw.pop('lonlatbox_color', 'k')
         lonlatbox_kw = kw.pop('lonlatbox_kw', {})
+        lonlatbox_color = kw.pop('lonlatbox_color', 'k')
+        lonlatbox_color = lonlatbox_kw.pop('color', lonlatbox_color)
         plt.plot(lon_, lat_, color=lonlatbox_color, **lonlatbox_kw)
 
     # plot coast lines
@@ -237,8 +262,10 @@ def mapplot(lon=None, lat=None, **kw):
     else:
         # plot coastlines
         coastlines_color = kw.pop('coastlines_color', '0.66')
+        coastlines_width = kw.pop('linewidth', 1)
+        coastlines_width = kw.pop('coastlines_width', coastlines_width)
         plt.plot(lonlon, latlat,
-            color=coastlines_color, linewidth=1,
+            color=coastlines_color, linewidth=coastlines_width,
             **kw)
 
     xticks2lon(xticks)
@@ -250,6 +277,64 @@ def mapplot(lon=None, lat=None, **kw):
 # ######## plot data on basemap
 def xyplot(data, x=None, y=None, **kw):
     '''Show 2D data in a x-y plane, which can also be a lon-lat plane.
+
+    #### Input
+        data: 2D array.
+        x: vector.
+        y: vector.
+        kw: optional parameters.
+
+    ------
+    Optional parameters:
+        add_basemap: boolean; default is False.
+        basemap_kw: parameters in plotting the basemap.
+        fill_continents: boolean; default is False.
+        lonlatbox: length-4 array, or None (default).
+
+        plot_type: 'pcolor', 'pcolormesh', 'imshow', 'conturf', 'contour',
+            'contourf+', 'quiver', or 'hatch'.
+        cmap: color map.
+        units: units.
+        clim: color limit.
+        cbar_type: 'vertical', 'v', 'horizontal', or 'h'.
+        cbar_kw: dict parameters in plotting color bar.
+        cbar_extend: boolean.
+        cbar_size: '2.5%' for vertial cbar; '5%' for horizontal cbar.
+        cbar_pad: 0.1 for vertical cbar; 0.4 for horizontal cbar.
+        hide_cbar: boolean; whether to show cbar.
+
+    ------
+    imshow parameters:
+        origin:
+        extent:
+        interpolation: 'nearest'(default) or 'bilnear'.
+
+    ------
+    contour parameters:
+        colors: 'gray'(default) or other colors.
+        levels:
+        label_contour: boolean.
+
+    ------
+    quiver parameters:
+        stride:
+        stride_lon:
+        stride_lat:
+        quiver_color:
+        scale:
+        hide_qkey:
+        qkey_kw:
+        qkey_X:
+        qkey_Y:
+        qkey_U:
+        qkey_label:
+        qkey_labelpos:
+
+    ------
+    hatch plot
+        hatches: default is ['///']; can be ['/'], ['//'], ['////'], etc.
+
+
         '''
     # data prepare
     input_data_have_two_components = ( isinstance(data, tuple)
@@ -384,6 +469,9 @@ def xyplot(data, x=None, y=None, **kw):
         if colors is not None:
             cmap = None
         plot_obj = plt.contour(x, y, data, cmap=cmap, colors=colors, **kw)
+        label_contour = kw.pop('label_contour', False)
+        if label_contour:
+            plt.clabel(plot_obj,plot_obj.levels[::2],fmt='%.2G')
     # contourf+: contourf + contour
     elif plot_type in ('contourf+',):
         colors = kw.pop('colors', 'gray')
@@ -422,14 +510,11 @@ def xyplot(data, x=None, y=None, **kw):
             # quiverkey plot
             plt.quiverkey(plot_obj, qkey_X, qkey_Y, qkey_U,
                 label=qkey_label, labelpos=qkey_labelpos, **qkey_kw)
-    # scatter
-    elif plot_type in ('scatter',):
-        L = data.astype('bool')
-        marker_color = kw.pop('marker_color', 'k')
-        plot_obj = plt.scatter(X[L], Y[L], color=marker_color, **kw)
+
     # hatch plot
     elif plot_type in ('hatch', 'hatches'):
-        plot_obj = plt.contourf(x, y, data, colors='none', hatches=['///'],
+        hatches = kw.pop('hatches', ['///'])
+        plot_obj = plt.contourf(x, y, data, colors='none', hatches=hatches,
             extend='both', **kw)
     else:
         print('Please choose a right plot_type from ("pcolor", "contourf", "contour")!')
