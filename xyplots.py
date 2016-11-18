@@ -49,7 +49,9 @@ def _load_coast():
     return coast_lon, coast_lat
 def colorbar(**kw):
     '''Customized colorbar.
-    parameters:
+
+    Parameters:
+    ------------
         cbar_type: str, 'vertical' ('v') or 'horizontal' ('h').
         size: str, default is '2.5%' for 'vertical', '5%' for 'horizontal'.
         pad: number, default is 0.1 for 'vertical', 0.4 for 'horizontal'.
@@ -136,12 +138,17 @@ def xticks2lon(new_xticks=None):
     new_xticklabels = current_xticklabels
     for i, x in enumerate(current_xticks):
         x = np.mod(x,360)
-        if x>0 and x<180:
-            new_xticklabels[i] = str(int(x)) + '$^{\circ}$E'
-        elif x>180 and x<360:
-            new_xticklabels[i] = str(int(360-x))+'$^{\circ}$W'
+        if 0<x<180: #x>0 and x<180:
+            # new_xticklabels[i] = str(int(x)) + '$^{\circ}$E'
+            new_xticklabels[i] = '{}$^{{\circ}}$E'.format(x)
+        elif 180<x<360: #x>180 and x<360:
+            # new_xticklabels[i] = str(int(360-x))+'$^{\circ}$W'
+            new_xticklabels[i] = '{}$^{{\circ}}$W'.format(360-x)
+        elif -180<x<0:
+            new_xticklabels[i] = '{}$^{{\circ}}$W'.format(-x)
         elif x==0 or x==180:
-            current_xticklabels[i] = str(int(x)) + '$^{\circ}$'
+            # new_xticklabels[i] = str(int(x)) + '$^{\circ}$'
+            new_xticklabels[i] = '{}$^{{\circ}}$'.format(x)
     plt.gca().set_xticklabels(new_xticklabels)
 def xticks2month(show_initials=False):
     '''Convert xticks to months. '''
@@ -171,13 +178,15 @@ def yticks2lat(new_yticks=None):
 def mapplot(lon=None, lat=None, **kw):
     '''Plot the basemap using coast data from Matlab.
 
-    #### Input
+    Parameters:
+    -----------
         lon: vector-like longitude range.
         lat: vector-like latitude range.
         kw: optional parameters
 
-    ------
     Optional parameters:
+    --------------------
+        ax: axis object, default=plt.gca()
         lonlatbox: [lon_start, lon_end, lat_start, lat_end] like array.
         lonlatbox_color: lonlat box color.
         lonlatbox_kw: dict parameters used in plotting lonlatbox.
@@ -186,8 +195,12 @@ def mapplot(lon=None, lat=None, **kw):
         continents_color: color of continents, default is 0.5.
         coastlines_color: color of coastlines, default is 0.66.
         coastlines_width: line width of coastlines, default is 1.
-
     '''
+    ax = kw.pop('ax', None)
+    if ax is None:
+        ax = plt.gca()
+    plt.sca(ax)
+
     if lon is None:
         if plt.get_fignums():# figures already exist
             lon = plt.gca().get_xlim()
@@ -232,7 +245,7 @@ def mapplot(lon=None, lat=None, **kw):
     lonlon, latlat = _load_coast()
     # fill continents or plot coast lines
     fill_continents = kw.pop('fill_continents', False)
-    xticks = kw.pop('xticks', np.arange(0, 360, 60))
+    xticks = kw.pop('xticks', np.arange(-180, 360, 60))
     yticks = kw.pop('yticks', np.arange(-90, 91, 30))
     if fill_continents:
         # indices of western and eastern boundaries
@@ -278,14 +291,16 @@ def mapplot(lon=None, lat=None, **kw):
 def xyplot(data, x=None, y=None, **kw):
     '''Show 2D data in a x-y plane, which can also be a lon-lat plane.
 
-    #### Input
+    Parameters:
+    ------------
         data: 2D array.
         x: vector.
         y: vector.
         kw: optional parameters.
 
-    ------
     Optional parameters:
+    ––––––––––––––––––––
+        ax: axis object, default is plt.gca()
         add_basemap: boolean; default is False.
         basemap_kw: parameters in plotting the basemap.
         fill_continents: boolean; default is False.
@@ -303,20 +318,20 @@ def xyplot(data, x=None, y=None, **kw):
         cbar_pad: 0.1 for vertical cbar; 0.4 for horizontal cbar.
         hide_cbar: boolean; whether to show cbar.
 
-    ------
     imshow parameters:
+    -------------------
         origin:
         extent:
         interpolation: 'nearest'(default) or 'bilnear'.
 
-    ------
     contour parameters:
+    -------------------
         colors: 'gray'(default) or other colors.
         levels:
         label_contour: boolean.
 
-    ------
     quiver parameters:
+    ––––––––––––––––––
         stride:
         stride_lon:
         stride_lat:
@@ -330,12 +345,14 @@ def xyplot(data, x=None, y=None, **kw):
         qkey_label:
         qkey_labelpos:
 
-    ------
     hatch plot
+    ------------
         hatches: default is ['///']; can be ['/'], ['//'], ['////'], etc.
-
-
         '''
+    ax = kw.pop('ax', None)
+    if ax is not None:
+        plt.sca(ax)
+
     # data prepare
     input_data_have_two_components = ( isinstance(data, tuple)
         or isinstance(data, list) )
@@ -528,8 +545,10 @@ def xyplot(data, x=None, y=None, **kw):
                 data1d = data.ravel()
             notNaNs = np.logical_not(np.isnan(data1d))
             data1d = data1d[notNaNs]
-            a = np.percentile(data1d,2)
-            b = np.percentile(data1d,98)
+            # a = np.percentile(data1d,2)
+            a = data1d.min()
+            # b = np.percentile(data1d,98)
+            b = data1d.max()
             if a * b < 0:
                 b = max(abs(a), abs(b))
                 a = -b

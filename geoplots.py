@@ -1,31 +1,38 @@
-# -*- coding: utf-8 -*-
 """
 @author: Wenchang Yang (yang.wenchang@uci.edu)
 """
 # from .mypyplot import vcolorbar, hcolorbar
 
 import numpy as np
+from numpy import ma
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from mpl_toolkits.basemap import Basemap
 from mpl_toolkits.basemap import addcyclic, shiftgrid
 # from copy import deepcopy
+try:
+    import xarray as xr
+except ImportError:
+    pass
 
 # ###### universal 2-D plot function on the lon-lat plane
 def geoplot(data=None, lon=None, lat=None, **kw):
     '''Show 2D data in a lon-lat plane.
 
-    ###### Input
+    Parameters
+    -----------
         data: array of shape (n_lat, n_lon), or [u_array, v_array]-like for (u,v)
             data or None(default) when only plotting the basemap.
         lon: n_lon length vector or None(default).
         lat: n_lat length vector or None(default).
         kw: dict parameters related to basemap or plot functions.
 
-    --------
     Basemap related parameters:
+    ----------------------------
         basemap_kw: dict parameter in the initialization of a Basemap.
-        proj or projection: map projection name ('cyl' default).
+        proj or projection: map projection name (default='moll')
+            popular projections: 'ortho', 'np'(='nplaea'), 'sp'(='splaea')
+                and other projections given from basemap.
         lon_0: map center longitude (None as default).
         lat_0: map center latitude (None as default).
         lonlatcorner: (llcrnrlon, urcrnrlon, llcrnrlat, urcrnrlat).
@@ -54,36 +61,33 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         lonlatbox_kw: dict parameters in the plot of lon-lat box.
         lonlatbox_color:
 
-    --------
     General plot parameters:
+    -------------------------
+        ax: axis object, default is plt.gca()
         plot_type: a string of plot type from ('pcolor', 'pcolormesh', 'imshow', 'contourf', 'contour', 'quiver', 'scatter') or None(default).
         cmap: pyplot colormap.
         clim: a tuple of colormap limit.
-        cbar_type: colorbar type from options of ('v', 'vertical', 'h', 'horizontal').
-        hide_cbar: bool value.
-        units: data units to be shown in the colorbar.
+        levels: sequence, int or None (default=None)
         plot_kw: dict parameters used in the plot functions.
 
-    ------
     Imshow related parameters
+    ---------------------------
         origin: 'lower' or 'upper'.
         extent: horizontal range.
         interpolation: 'nearest' (default) or 'bilinear' or 'cubic'.
 
-    ------
     Contourf related parameters:
+    -------------------------------
         extend: 'both'(default).
-        levels: contour levels.
 
-    ------
     Contour related parameters:
+    ----------------------------
         label_contour: False(default) or True.
             Whether to label contours or not.
-        levels: contour levels
         colors: contour color (default is 'gray').
 
-    ------
     Quiver plot related parameters:
+    --------------------------------
         stride: stride along lon and lat.
         stride_lon: stride along lon.
         stride_lat: stride along lat.
@@ -99,16 +103,16 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         qkey_labelpos: labelpos parameter in the plt.quiverkey function.
         qkey_kw: dict parameters used in the plt.quiverkey function.
 
-    ------
     Scatter related parameters:
+    ------------------------------
         scatter_data: None(default) or (lonvec, latvec).
 
-    -----
     Hatch plot related parameters:
+    ----------------------------------
         hatches: ['///'] is default.
 
-    --------
     Colorbar related parameters:
+    -------------------------------
         hide_cbar: bool value, whether to show the colorbar.
         cbar_type: 'vertical'(shorten as 'v') or 'horizontal' (shorten as 'h').
         cbar_extend: extend parameter in the plt.colorbar function.
@@ -118,12 +122,55 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         cbar_pad: default 0.1 for vertical colorbar,
             0.4 for horizontal colorbar.
         cbar_kw: dict parameters used in the plt.colorbar function.
+        units: str
+        long_name: str
 
-    ###### Returns
+    Returns
+    --------
         basemap object if only basemap is plotted.
         plot object if data is shown.
         '''
 
+    # target axis
+    ax = kw.pop('ax', None)
+    if ax is not None:
+        plt.sca(ax)
+
+
+    if isinstance(data, xr.DataArray):
+        data_array = data.copy()
+        data = data_array.values
+        if np.any(np.isnan(data)):
+            data = ma.masked_invalid(data)
+        if lon is None:
+            try:
+                lonname = [s for s in data_array.dims
+                    if s in ('lon', 'longitude', 'X')][0]
+            except IndexError:
+                lonname = [s for s in data_array.dims
+                    if 'lon' in s][0]
+            lon = data_array[lonname]
+        if lat is None:
+            try:
+                latname = [s for s in data_array.dims
+                    if s in ('lat', 'latitude', 'Y')][0]
+            except IndexError:
+                latname = [s for s in data_array.dims
+                    if 'lat' in s][0]
+            lat = data_array[latname]
+        # guess data name
+        try:
+            data_name = data_array.attrs['long_name']
+        except KeyError:
+            try:
+                data_name = data_array.name
+            except AttributeError:
+                data_name = ''
+        # guess data units
+        try:
+            data_units = data_array.attrs['units']
+        except KeyError:
+            data_units = ''
     #  copy the original data
     if data is not None and hasattr(data, 'copy'):
         data = data.copy()
@@ -135,7 +182,8 @@ def geoplot(data=None, lon=None, lat=None, **kw):
     # basemap kw parameter
     basemap_kw = kw.pop('basemap_kw', {})
     # projection
-    proj = kw.pop('proj', 'cyl')
+    # proj = kw.pop('proj', 'cyl')
+    proj = kw.pop('proj', 'moll')
     proj = kw.pop('projection', proj) # projection overrides the proj parameter
     # short names for nplaea and splaea projections
     if proj in ('npolar', 'polar', 'np'):
@@ -239,7 +287,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         coastlines_kw = kw.pop('coastlines_kw', {})
         coastlines_color = kw.pop('coastlines_color', '0.66')
         coastlines_color = coastlines_kw.pop('color', coastlines_color)
-        m.drawcoastlines(color=coastlines_color)
+        m.drawcoastlines(color=coastlines_color, linewidth=0.5)
 
     # parallels
     parallels_kw = kw.pop('parallels_kw', {})
@@ -255,7 +303,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
     parallels_labels = parallels_kw.pop('labels', parallels_labels)
     if parallels is not None:
         m.drawparallels(parallels, color=parallels_color,
-            labels=parallels_labels, **parallels_kw)
+            labels=parallels_labels, linewidth=1.0, **parallels_kw)
 
     # meridians
     meridians_kw = kw.pop('meridians_kw', {})
@@ -273,7 +321,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
     meridians_labels = meridians_kw.pop('labels', meridians_labels)
     if meridians is not None:
         m.drawmeridians(meridians, color=meridians_color,
-            labels=meridians_labels, **meridians_kw)
+            labels=meridians_labels, linewidth=1.0, **meridians_kw)
 
     # lonlatbox
     lonlatbox = kw.pop('lonlatbox', None)
@@ -416,19 +464,56 @@ def geoplot(data=None, lon=None, lat=None, **kw):
                  cmap = plt.get_cmap('Blues_r')
          else:
              cmap = plt.get_cmap('RdBu_r')
+    elif isinstance(cmap, str):
+        cmap = plt.get_cmap(cmap)
 
-    # units
-    units = kw.pop('units', None)
-    if units is None:
-        units = ''
+    # clim parameters
+    clim = kw.pop('clim', None)
+    robust = kw.pop('robust', False)
+    if clim is None:
+        if isinstance(data,np.ma.core.MaskedArray):
+            data1d = data.compressed()
+        else:
+            data1d = data.ravel()
+        notNaNs = np.logical_not(np.isnan(data1d))
+        data1d = data1d[notNaNs]
+        if robust:
+            a = np.percentile(data1d,2)
+            b = np.percentile(data1d,98)
+        else:
+            a = data1d.min()
+            b = data1d.max()
+        if a * b < 0:
+            b = max(abs(a), abs(b))
+            a = -b
+        clim = a, b
+
+    # levels
+    levels = kw.pop('levels', None)
+    if levels is None:
+        if plot_type in ('contour', 'contourf', 'contourf+'):
+            a, b = clim
+            levels = np.linspace(a, b, 11)
+    elif isinstance(levels, int):
+        if plot_type in ('contour', 'contourf', 'contourf+'):
+            a, b = clim
+            levels = np.linspace(a, b, levels)
+        elif plot_type in ('pcolor', 'pcolormesh', 'imshow'):
+            cmap = plt.get_cmap(cmap.name, levels-1)
+    else: # levels is a sequence
+        if plot_type in ('pcolor', 'pcolormesh', 'imshow'):
+            cmap = plt.get_cmap(cmap.name, len(levels)-1)
+            clim = min(levels), max(levels)
+
 
     # colorbar parameters
-    if plot_type in ('pcolor', 'pcolormesh', 'contourf', 'contourf+', 'imshow'):
+    if plot_type in ('pcolor', 'pcolormesh', 'contourf', 'contourf+',
+        'imshow'):
         cbar_type = kw.pop('cbar_type', 'vertical')
         cbar_kw = kw.pop('cbar_kw', {})
         cbar_extend = kw.pop('cbar_extend', 'neither')
         cbar_extend = cbar_kw.pop('extend', cbar_extend)
-
+        hide_cbar = kw.pop('hide_cbar', False)
         if cbar_type in ('v', 'vertical'):
             cbar_size = kw.pop('cbar_size', '2.5%')
             cbar_size = cbar_kw.pop('size', cbar_size)
@@ -442,9 +527,25 @@ def geoplot(data=None, lon=None, lat=None, **kw):
             cbar_size = cbar_kw.pop('size', cbar_size)
             cbar_pad = kw.pop('cbar_pad', 0.4)
             cbar_pad = cbar_kw.pop('pad', cbar_pad)
-            cbar_position = 'bottome'
+            cbar_position = 'bottom'
             cbar_orientation = 'horizontal'
-        hide_cbar = kw.pop('hide_cbar', False)
+        # units in colorbar
+        units = kw.pop('units', None)
+        if units is None:
+            try:
+                units = data_units # input data is a DataArray
+            except:
+                units = ''
+        # long_name in colorbar
+        long_name = kw.pop('long_name', None)
+        if long_name is None:
+            try:
+                long_name = data_name # if input data is a DataArray
+                if long_name is None:
+                    long_name = ''
+            except:
+                long_name = ''
+
 
     # ###### plot
     # pcolor
@@ -468,40 +569,49 @@ def geoplot(data=None, lon=None, lat=None, **kw):
 
     # contourf
     elif plot_type in ('contourf',):
-        if proj in ('ortho','npstere', 'nplaea', 'npaeqd', 'spstere', 'splaea', 'spaeqd'):
+        if proj in ('ortho','npstere', 'nplaea', 'npaeqd', 'spstere',
+            'splaea', 'spaeqd')\
+            and np.isclose(np.abs(lon_edge[-1]-lon_edge[0]), 360):
             data, lon = addcyclic(data, lon)
             Lon, Lat = np.meshgrid(lon,lat)
             X, Y = m(Lon, Lat)
         extend = kw.pop('extend', 'both')
-        # levels = kw.pop('levels', None)
-        plot_obj = m.contourf(X, Y, data, extend=extend, cmap=cmap, **kw)
+        plot_obj = m.contourf(X, Y, data, extend=extend, cmap=cmap,
+            levels=levels, **kw)
 
     # contour
     elif plot_type in ('contour',):
-        if proj in ('ortho','npstere', 'nplaea', 'npaeqd', 'spstere', 'splaea', 'spaeqd'):
+        if proj in ('ortho','npstere', 'nplaea', 'npaeqd', 'spstere',
+            'splaea', 'spaeqd')\
+            and np.isclose(np.abs(lon_edge[-1]-lon_edge[0]), 360):
             data, lon = addcyclic(data, lon)
             Lon, Lat = np.meshgrid(lon,lat)
             X, Y = m(Lon, Lat)
         colors = kw.pop('colors', 'gray')
         if colors is not None:
             cmap = None
-        plot_obj = m.contour(X, Y, data, cmap=cmap, colors=colors, **kw)
+        plot_obj = m.contour(X, Y, data, cmap=cmap, colors=colors,
+            levels=levels, **kw)
         label_contour = kw.pop('label_contour', False)
         if label_contour:
             plt.clabel(plot_obj,plot_obj.levels[::2],fmt='%.2G')
 
     # contourf + contour
     elif plot_type in ('contourf+',):
-        if proj in ('ortho','npstere', 'nplaea', 'npaeqd', 'spstere', 'splaea', 'spaeqd'):
+        if proj in ('ortho','npstere', 'nplaea', 'npaeqd', 'spstere',
+            'splaea', 'spaeqd')\
+            and np.isclose(np.abs(lon_edge[-1]-lon_edge[0]), 360):
             data, lon = addcyclic(data, lon)
             Lon, Lat = np.meshgrid(lon,lat)
             X, Y = m(Lon, Lat)
         extend = kw.pop('extend', 'both')
-        plot_obj = m.contourf(X, Y, data, extend=extend, cmap=cmap, **kw)
+        plot_obj = m.contourf(X, Y, data, extend=extend, cmap=cmap,
+            levels=levels, **kw)
         colors = kw.pop('colors', 'gray')
         if colors is not None:
             cmap = None
-        m.contour(X, Y, data, cmap=cmap, colors=colors, **kw)
+        m.contour(X, Y, data, cmap=cmap, colors=colors,
+            levels=levels, **kw)
 
     # quiverplot
     elif plot_type in ('quiver',):
@@ -517,7 +627,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
             u_, v_, Lon_, Lat_, returnxy=True
         )
         quiver_color = kw.pop('quiver_color', 'g')
-        quiver_scale = kw.pop('scale', None)
+        quiver_scale = kw.pop('quiver_scale', None)
         hide_qkey = kw.pop('hide_qkey', False)
         qkey_kw = kw.pop('qkey_kw', {})
         qkey_X = kw.pop('qkey_X', 0.85)
@@ -545,42 +655,30 @@ def geoplot(data=None, lon=None, lat=None, **kw):
     else:
         print('Please choose a right plot_type from ("pcolor", "contourf", "contour")!')
 
-    # clim
-    clim = kw.pop('clim', None)
+    # set clim
     if plot_type in ('pcolor', 'pcolormesh', 'imshow'):
-        if clim is None:
-            if isinstance(data,np.ma.core.MaskedArray):
-                data1d = data.compressed()
-            else:
-                data1d = data.ravel()
-            notNaNs = np.logical_not(np.isnan(data1d))
-            data1d = data1d[notNaNs]
-            a = np.percentile(data1d,2)
-            b = np.percentile(data1d,98)
-            if a * b < 0:
-                b = max(abs(a), abs(b))
-                a = -b
-            clim = a, b
-        else:
-            pass
         plt.clim(clim)
 
-    # colorbar
-    if plot_type in ('pcolor', 'pcolormesh', 'contourf', 'contourf+', 'imshow'):
+    # plot colorbar
+    if plot_type in ('pcolor', 'pcolormesh', 'contourf', 'contourf+',
+        'imshow'):
         ax_current = plt.gca()
         divider = make_axes_locatable(ax_current)
         cax = divider.append_axes(cbar_position, size=cbar_size, pad=cbar_pad)
         cbar = plt.colorbar(plot_obj, cax=cax, extend=cbar_extend,
             orientation=cbar_orientation, **cbar_kw)
-        # units position
-        if units is not None and units != '':
-            if cbar_type in ('v', 'vertical'):
-                # put the units on the top of the vertical colorbar
-                cbar.ax.xaxis.set_label_position('top')
-                cbar.ax.set_xlabel(units)
+        if cbar_type in ('v', 'vertical'):
+            # put the units on the top of the vertical colorbar
+            cbar.ax.xaxis.set_label_position('top')
+            cbar.ax.set_xlabel(units)
+            cbar.ax.set_ylabel(long_name)
+        elif cbar_type in ('h', 'horizontal'):
+            # cbar.ax.yaxis.set_label_position('right')
+            # cbar.ax.set_ylabel(units, rotation=0, ha='left', va='center')
+            if long_name == '' or units =='':
+                cbar.ax.set_xlabel('{}{}'.format(long_name, units))
             else:
-                cbar.ax.yaxis.set_label_position('right')
-                cbar.ax.set_ylabel(units, rotation=0, ha='left', va='center')
+                cbar.ax.set_xlabel('{} [{}]'.format(long_name, units))
         # remove the colorbar to avoid repeated colorbars
         if hide_cbar:
             cbar.remove()
