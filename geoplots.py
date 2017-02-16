@@ -42,7 +42,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         fill_continents: bool value (False as default).
         continents_kw: dict parameter used in the Basemap.fillcontinents method.
         continents_color: color of continents ('0.5' as default).
-        lake_color: color of lakes ('0.5' as default).
+        lake_color: color of lakes ('none' as default).
 
         coastlines_kw: dict parameter used in the Basemap.drawcoastlines method.
         coastlines_color: color of coast lines ('0.66' as default).
@@ -69,6 +69,10 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         clim: a tuple of colormap limit.
         levels: sequence, int or None (default=None)
         plot_kw: dict parameters used in the plot functions.
+
+    Pcolor/Pcolormesh related parameters:
+    -------------------------------
+        rasterized: bool (default is True).
 
     Imshow related parameters
     ---------------------------
@@ -278,7 +282,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         continents_kw = kw.pop('continents_kw', {})
         continents_color = kw.pop('continents_color', '0.5')
         continents_color = continents_kw.pop('color', continents_color)
-        lake_color = kw.pop('lake_color', continents_color)
+        lake_color = kw.pop('lake_color', 'none')
         lake_color = continents_kw.pop('lake_color', lake_color)
         m.fillcontinents(color=continents_color, lake_color=lake_color,
             **continents_kw)
@@ -290,6 +294,7 @@ def geoplot(data=None, lon=None, lat=None, **kw):
         m.drawcoastlines(color=coastlines_color, linewidth=0.5)
 
     # parallels
+    gridon = kw.pop('gridon', False)
     parallels_kw = kw.pop('parallels_kw', {})
     # parallels = kw.pop('parallels', np.arange(-90,91,30))
     parallels = kw.pop('parallels', None)
@@ -303,6 +308,9 @@ def geoplot(data=None, lon=None, lat=None, **kw):
     parallels_labels = parallels_kw.pop('labels', parallels_labels)
     if parallels is not None:
         m.drawparallels(parallels, color=parallels_color,
+            labels=parallels_labels, linewidth=1.0, **parallels_kw)
+    elif gridon:
+        m.drawparallels(np.arange(-90, 91, 30), color=parallels_color,
             labels=parallels_labels, linewidth=1.0, **parallels_kw)
 
     # meridians
@@ -321,6 +329,9 @@ def geoplot(data=None, lon=None, lat=None, **kw):
     meridians_labels = meridians_kw.pop('labels', meridians_labels)
     if meridians is not None:
         m.drawmeridians(meridians, color=meridians_color,
+            labels=meridians_labels, linewidth=1.0, **meridians_kw)
+    elif gridon:
+        m.drawmeridians(np.arange(-180, 360, 30), color=meridians_color,
             labels=meridians_labels, linewidth=1.0, **meridians_kw)
 
     # lonlatbox
@@ -529,32 +540,36 @@ def geoplot(data=None, lon=None, lat=None, **kw):
             cbar_pad = cbar_kw.pop('pad', cbar_pad)
             cbar_position = 'bottom'
             cbar_orientation = 'horizontal'
-        # units in colorbar
-        units = kw.pop('units', None)
-        if units is None:
-            try:
-                units = data_units # input data is a DataArray
-            except:
-                units = ''
-        # long_name in colorbar
-        long_name = kw.pop('long_name', None)
-        if long_name is None:
-            try:
-                long_name = data_name # if input data is a DataArray
-                if long_name is None:
-                    long_name = ''
-            except:
+    # units in colorbar
+    units = kw.pop('units', None)
+    if units is None:
+        try:
+            units = data_units # input data is a DataArray
+        except:
+            units = ''
+    # long_name in colorbar
+    long_name = kw.pop('long_name', None)
+    if long_name is None:
+        try:
+            long_name = data_name # if input data is a DataArray
+            if long_name is None:
                 long_name = ''
+        except:
+            long_name = ''
 
 
     # ###### plot
     # pcolor
     if plot_type in ('pcolor',):
-        plot_obj = m.pcolor(X_edge, Y_edge, data, cmap=cmap, **kw)
+        rasterized = kw.pop('rasterized', True)
+        plot_obj = m.pcolor(X_edge, Y_edge, data, cmap=cmap,
+            rasterized=rasterized, **kw)
 
     # pcolormesh
     elif plot_type in ('pcolormesh',):
-        plot_obj = m.pcolormesh(X_edge, Y_edge, data, cmap=cmap, **kw)
+        rasterized = kw.pop('rasterized', True)
+        plot_obj = m.pcolormesh(X_edge, Y_edge, data, cmap=cmap,
+            rasterized=rasterized, **kw)
 
     # imshow
     elif plot_type in ('imshow',):
@@ -587,11 +602,12 @@ def geoplot(data=None, lon=None, lat=None, **kw):
             data, lon = addcyclic(data, lon)
             Lon, Lat = np.meshgrid(lon,lat)
             X, Y = m(Lon, Lat)
-        colors = kw.pop('colors', 'gray')
+        colors = kw.pop('colors', 'k')
         if colors is not None:
             cmap = None
+        alpha = kw.pop('alpha', 0.5)
         plot_obj = m.contour(X, Y, data, cmap=cmap, colors=colors,
-            levels=levels, **kw)
+            levels=levels, alpha=alpha, **kw)
         label_contour = kw.pop('label_contour', False)
         if label_contour:
             plt.clabel(plot_obj,plot_obj.levels[::2],fmt='%.2G')
@@ -605,13 +621,15 @@ def geoplot(data=None, lon=None, lat=None, **kw):
             Lon, Lat = np.meshgrid(lon,lat)
             X, Y = m(Lon, Lat)
         extend = kw.pop('extend', 'both')
+        linewidths = kw.pop('linewidths', 1)
         plot_obj = m.contourf(X, Y, data, extend=extend, cmap=cmap,
             levels=levels, **kw)
-        colors = kw.pop('colors', 'gray')
+        colors = kw.pop('colors', 'k')
         if colors is not None:
             cmap = None
-        m.contour(X, Y, data, cmap=cmap, colors=colors,
-            levels=levels, **kw)
+        alpha = kw.pop('alpha', 0.5)
+        m.contour(X, Y, data, cmap=cmap, colors=colors, alpha=alpha,
+            levels=levels, linewidths=linewidths, **kw)
 
     # quiverplot
     elif plot_type in ('quiver',):

@@ -10,4 +10,4 @@ lonlatplot = geoplot
 
 from .misc import xticks2dayofyear
 
-from .savepdf import savefig
+# from .savepdf import savefig

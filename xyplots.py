@@ -196,10 +196,6 @@ def mapplot(lon=None, lat=None, **kw):
         coastlines_color: color of coastlines, default is 0.66.
         coastlines_width: line width of coastlines, default is 1.
     '''
-    ax = kw.pop('ax', None)
-    if ax is None:
-        ax = plt.gca()
-    plt.sca(ax)
 
     if lon is None:
         if plt.get_fignums():# figures already exist
@@ -213,6 +209,11 @@ def mapplot(lon=None, lat=None, **kw):
             lat = np.arange(-89, 90, 2)
     lon = np.squeeze(lon)
     lat = np.squeeze(lat)
+
+    ax = kw.pop('ax', None)
+    if ax is None:
+        ax = plt.gca()
+    plt.sca(ax)
 
     # get grid edges
     lon_edge, lat_edge = _get_grid_edges(lon, lat)
